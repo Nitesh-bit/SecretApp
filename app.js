@@ -6,7 +6,9 @@ const bodyParser= require("body-parser");
 const mongoose= require("mongoose");
 //const encrypt= require("mongoose-encryption");
 
-const md5= require("md5");
+//const md5= require("md5");
+const bcrypt= require("bcrypt");
+const saltRounds= 10;
 
 const app= express();
 app.use(express.static("public"));
@@ -38,23 +40,40 @@ app.get("/Register", function(req,res){
 })
 
 app.post("/Register", function(req,res){
-    const newUSer= new User({
-        email: req.body.username,
-        password: md5(req.body.password)
-    });
-    newUSer.save(function(err){
-        if(err){
-            console.log(err);
-        }
-        else{
-            res.render("secrets");
-        }
+    
+    bcrypt.hash(req.body.password, saltRounds, function(err,hash){
+        const newUSer= new User({
+            email: req.body.username,
+            password: hash
+        });
+        newUSer.save(function(err){
+            if(err){
+                console.log(err);
+            }
+            else{
+                res.render("secrets");
+            }
+        }); 
     })
+    
+    // const newUSer= new User({
+    //     email: req.body.username,
+    //     password: md5(req.body.password)
+    // });
+    // newUSer.save(function(err){
+    //     if(err){
+    //         console.log(err);
+    //     }
+    //     else{
+    //         res.render("secrets");
+    //     }
+    // });
 });
 
 app.post("/Login", function(req,res){
     const userName= req.body.username;
-    const password= md5(req.body.password);
+    const password= req.body.password;
+//    const password= md5(req.body.password);
 
     User.findOne({email: userName}, function(err, foundUser){
         if(err){
@@ -62,9 +81,14 @@ app.post("/Login", function(req,res){
         }
         else{
             if(foundUser){
-                if(foundUser.password === password){
-                    res.render("secrets");
-                }
+                bcrypt.compare(password, foundUser.password, function(err, result){
+                    if(result === true){
+                        res.render("secrets");
+                    }
+                });
+                // if(foundUser.password === password){
+                //     res.render("secrets");
+                // }
             }  
         }
     });
